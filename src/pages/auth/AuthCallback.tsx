@@ -9,15 +9,22 @@ const AuthCallback: React.FC = () => {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error getting session:', error);
-        navigate('/login');
-        return;
-      }
+      try {
+        // Get the session from the URL hash
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          navigate('/login');
+          return;
+        }
 
-      if (session) {
+        if (!session) {
+          console.error('No session found');
+          navigate('/login');
+          return;
+        }
+
         // Get user data
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -37,16 +44,24 @@ const AuthCallback: React.FC = () => {
           return;
         }
 
-        // Update auth store
-        await login(session.user.email!, session.user.user_metadata.password);
+        // Set the user in the auth store
+        useAuthStore.setState({
+          user: userData,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null
+        });
+
+        // Navigate to dashboard
         navigate('/dashboard');
-      } else {
+      } catch (error) {
+        console.error('Error in auth callback:', error);
         navigate('/login');
       }
     };
 
     handleAuthCallback();
-  }, [navigate, login]);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
